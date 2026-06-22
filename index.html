@@ -56,14 +56,14 @@ const FOCAL = 650, CAM_Y = -130, CAM_DIST = 350;
 const GRAV = 0.68, JUMP_V = -10.5;
 
 const levels = [
-  {name:'Tutorial', len:2500, spd:5,  max:8,  gr:0.02, gap:0.05, dbl:0.07, safe:18, hue:220, reward:5,  tunHue:220, bg:['#0c0c28','#080820','#020210'], style:'default'},
-  {name:'First Steps', len:3500, spd:7,  max:12, gr:0.04, gap:0.08, dbl:0.12, safe:8, hue:190, reward:10, tunHue:190, bg:['#0c1c1c','#081414','#020a0a'], style:'grid'},
-  {name:'Speed Up',    len:4500, spd:9,  max:16, gr:0.06, gap:0.10, dbl:0.16, safe:6, hue:140, reward:15, tunHue:140, bg:['#0c1c0c','#081408','#020a02'], style:'neon'},
-  {name:'Getting Tough',len:6000,spd:11, max:20, gr:0.08, gap:0.13, dbl:0.20, safe:5, hue:30, reward:20, tunHue:30, bg:['#1c140c','#140e08','#0a0802'], style:'checker'},
-  {name:'Halfway',    len:7500, spd:13, max:24, gr:0.10, gap:0.16, dbl:0.26, safe:4, hue:200, reward:25, tunHue:200, bg:['#0c1420','#080e18','#020810'], style:'crystal'},
-  {name:'Tunnel Rush',len:9000, spd:15, max:28, gr:0.12, gap:0.19, dbl:0.30, safe:3, hue:40, reward:30, tunHue:40, bg:['#1c1408','#140e04','#0a0802'], style:'glow'},
-  {name:'Inferno',    len:11000,spd:17, max:32, gr:0.14, gap:0.22, dbl:0.36, safe:3, hue:0, reward:35, tunHue:0, bg:['#1c0808','#140404','#0a0202'], style:'lava'},
-  {name:'Void',       len:14000,spd:19, max:36, gr:0.16, gap:0.26, dbl:0.42, safe:2, hue:280, reward:50, tunHue:260, bg:['#0c0814','#08040e','#040208'], style:'void'},
+  {name:'Tutorial', len:2500, spd:5,  max:8,  gr:0.02, gap:0.05, dbl:0.07, safe:18, hue:220, reward:5,  tunHue:220, bg:['#0a0a30','#050520','#010108'], style:'default'},
+  {name:'First Steps', len:3500, spd:7,  max:12, gr:0.04, gap:0.08, dbl:0.12, safe:8, hue:190, reward:10, tunHue:180, bg:['#0a1a2a','#051015','#010508'], style:'grid'},
+  {name:'Speed Up',    len:4500, spd:9,  max:16, gr:0.06, gap:0.10, dbl:0.16, safe:6, hue:140, reward:15, tunHue:130, bg:['#0a1a0a','#051005','#010401'], style:'neon'},
+  {name:'Getting Tough',len:6000,spd:11, max:20, gr:0.08, gap:0.13, dbl:0.20, safe:5, hue:30, reward:20, tunHue:25, bg:['#1a0e08','#100804','#080402'], style:'checker'},
+  {name:'Halfway',    len:7500, spd:13, max:24, gr:0.10, gap:0.16, dbl:0.26, safe:4, hue:200, reward:25, tunHue:210, bg:['#08101e','#040810','#020408'], style:'crystal'},
+  {name:'Tunnel Rush',len:9000, spd:15, max:28, gr:0.12, gap:0.19, dbl:0.30, safe:3, hue:45, reward:30, tunHue:45, bg:['#1a1208','#100c04','#080602'], style:'glow'},
+  {name:'Inferno',    len:11000,spd:17, max:32, gr:0.14, gap:0.22, dbl:0.36, safe:3, hue:0, reward:35, tunHue:360, bg:['#1a0606','#100202','#080101'], style:'lava'},
+  {name:'Void',       len:14000,spd:19, max:36, gr:0.16, gap:0.26, dbl:0.42, safe:2, hue:280, reward:50, tunHue:270, bg:['#0e0620','#080210','#040108'], style:'void'},
 ];
 
 let state = 'menu';
@@ -436,15 +436,16 @@ function drawTunnel() {
   const th = lv ? lv.tunHue : 220;
   for (let i=0;i<28;i++) {
     const t = i/28;
-    const worldZ = state==='menu' ? 5000 + i * 300 : pz + t * 5500;
+    const worldZ = state==='menu' ? 2000 + i * 200 : pz + t * 5500;
     const p = screenPos(0, 0, worldZ);
     if (!p) continue;
     const w = 380 * p.sc * 1.8, cx = W/2, cy = p.y;
-    const a = (1-t*0.8) * 0.05;
+    const fade = 1 - t;
+    const a = fade * 0.25;
 
-    ctx.strokeStyle = `hsla(${th+30},80%,60%,${a})`;
-    ctx.lineWidth = 1.5;
-    ctx.globalAlpha = a*2;
+    ctx.strokeStyle = `hsla(${th+30},80%,70%,${a})`;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = fade * 0.4;
     ctx.beginPath(); ctx.ellipse(cx, cy, w, w*0.35, 0, 0, 6.28); ctx.stroke();
   }
   if (coinPop>0) {
