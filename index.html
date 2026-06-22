@@ -727,26 +727,6 @@ function drawPlayer() {
   ctx.beginPath(); ctx.roundRect(-11,-17,3,18,1.5); ctx.fill();
   ctx.beginPath(); ctx.roundRect(8,-17,3,18,1.5); ctx.fill();
 
-  // Fire exhaust below boots
-  if (state==='playing') {
-    const fi = onGround ? Math.max(0,(speed-5)/30) : 1;
-    if (fi>0.05) {
-      const eh = playerConfig.trail==='ice'?200:playerConfig.trail==='neon'?140:playerConfig.trail==='gold'?50:20;
-      ctx.shadowColor=playerConfig.trail==='ice'?'rgba(100,200,255,0.6)':playerConfig.trail==='neon'?'rgba(100,255,100,0.6)':playerConfig.trail==='gold'?'rgba(255,200,50,0.6)':'rgba(255,120,30,0.6)';
-      for (let f=0;f<12;f++) {
-        const fx=-7+f*1.3+Math.random()*2;
-        const fh=(2+Math.random()*16)*fi;
-        const fw=1+Math.random()*3;
-        ctx.shadowBlur=12+Math.random()*18;
-        ctx.globalAlpha=0.2+Math.random()*0.5;
-        ctx.fillStyle=`hsl(${eh+Math.random()*30},100%,${50+Math.random()*35}%)`;
-        ctx.fillRect(fx,37+bob,fw,fh);
-      }
-      ctx.shadowBlur=0;
-      ctx.globalAlpha=1;
-    }
-  }
-
   ctx.restore();
 }
 
