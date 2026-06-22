@@ -16,15 +16,14 @@ canvas { display:block; max-width:100vw; max-height:100vh; cursor:pointer; }
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 const W = 480, H = 720;
-canvas.width = W; canvas.height = H;
+let SCALE = 1;
 
 function resize() {
-  const vr = window.innerWidth / window.innerHeight;
-  const gr = W / H;
-  let w, h;
-  if (vr > gr) { h = window.innerHeight; w = h * gr; }
-  else { w = window.innerWidth; h = w / gr; }
-  canvas.style.width = w+'px'; canvas.style.height = h+'px';
+  SCALE = Math.min(window.innerWidth / W, window.innerHeight / H);
+  canvas.width = Math.round(W * SCALE);
+  canvas.height = Math.round(H * SCALE);
+  canvas.style.width = canvas.width + 'px';
+  canvas.style.height = canvas.height + 'px';
 }
 window.addEventListener('resize', resize);
 resize();
@@ -389,6 +388,7 @@ function screenPos(worldX, worldY, worldZ) {
 
 function draw() {
   ctx.save();
+  ctx.scale(SCALE, SCALE);
 
   if (shakeX>0.5||shakeY>0.5)
     ctx.translate((Math.random()-0.5)*shakeX*2,(Math.random()-0.5)*shakeY*2);
