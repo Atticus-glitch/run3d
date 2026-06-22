@@ -53,17 +53,17 @@ const sfx = {
 // Camera follows the player dynamically — true 3D
 const LANES = 3, LANE_W = 80, SEG_Z = 120, VIEW_DIST = 5000;
 const FOCAL = 650, CAM_Y = -130, CAM_DIST = 350;
-const GRAV = 0.75, JUMP_V = -10.5;
+const GRAV = 0.68, JUMP_V = -10.5;
 
 const levels = [
-  {name:'Tutorial', len:2500, spd:6,  max:10, gr:0.04, gap:0.08, dbl:0.12, safe:14, hue:220, reward:5},
-  {name:'First Steps', len:3500, spd:10, max:18, gr:0.08, gap:0.16, dbl:0.24, safe:5, hue:190, reward:10},
-  {name:'Speed Up',    len:4500, spd:13, max:24, gr:0.12, gap:0.20, dbl:0.32, safe:4, hue:160, reward:15},
-  {name:'Getting Tough',len:6000,spd:16, max:30, gr:0.16, gap:0.24, dbl:0.38, safe:3, hue:130, reward:20},
-  {name:'Halfway',    len:7500, spd:18, max:34, gr:0.20, gap:0.28, dbl:0.44, safe:3, hue:80, reward:25},
-  {name:'Tunnel Rush',len:9000, spd:20, max:38, gr:0.24, gap:0.32, dbl:0.50, safe:2, hue:40, reward:30},
-  {name:'Inferno',    len:11000,spd:24, max:42, gr:0.28, gap:0.36, dbl:0.56, safe:2, hue:0, reward:35},
-  {name:'Void',       len:14000,spd:28, max:48, gr:0.35, gap:0.40, dbl:0.62, safe:1, hue:280, reward:50},
+  {name:'Tutorial', len:2500, spd:5,  max:8,  gr:0.02, gap:0.05, dbl:0.07, safe:18, hue:220, reward:5,  tunHue:220, bg:['#0c0c28','#080820','#020210'], style:'default'},
+  {name:'First Steps', len:3500, spd:7,  max:12, gr:0.04, gap:0.08, dbl:0.12, safe:8, hue:190, reward:10, tunHue:190, bg:['#0c1c1c','#081414','#020a0a'], style:'grid'},
+  {name:'Speed Up',    len:4500, spd:9,  max:16, gr:0.06, gap:0.10, dbl:0.16, safe:6, hue:140, reward:15, tunHue:140, bg:['#0c1c0c','#081408','#020a02'], style:'neon'},
+  {name:'Getting Tough',len:6000,spd:11, max:20, gr:0.08, gap:0.13, dbl:0.20, safe:5, hue:30, reward:20, tunHue:30, bg:['#1c140c','#140e08','#0a0802'], style:'checker'},
+  {name:'Halfway',    len:7500, spd:13, max:24, gr:0.10, gap:0.16, dbl:0.26, safe:4, hue:200, reward:25, tunHue:200, bg:['#0c1420','#080e18','#020810'], style:'crystal'},
+  {name:'Tunnel Rush',len:9000, spd:15, max:28, gr:0.12, gap:0.19, dbl:0.30, safe:3, hue:40, reward:30, tunHue:40, bg:['#1c1408','#140e04','#0a0802'], style:'glow'},
+  {name:'Inferno',    len:11000,spd:17, max:32, gr:0.14, gap:0.22, dbl:0.36, safe:3, hue:0, reward:35, tunHue:0, bg:['#1c0808','#140404','#0a0202'], style:'lava'},
+  {name:'Void',       len:14000,spd:19, max:36, gr:0.16, gap:0.26, dbl:0.42, safe:2, hue:280, reward:50, tunHue:260, bg:['#0c0814','#08040e','#040208'], style:'void'},
 ];
 
 let state = 'menu';
@@ -132,12 +132,12 @@ function createSeg(z) {
       for (let i=0;i<3;i++) if (!pat[i]) lanes[i]=false;
     } else {
       const r = Math.random();
-      const sCut = lv.gap + prog * 0.20;
-      const dCut = sCut + lv.dbl + prog * 0.14;
+      const sCut = lv.gap + prog * 0.10;
+      const dCut = sCut + lv.dbl + prog * 0.06;
       if (r < sCut) {
         const li=Math.floor(Math.random()*3); lanes[li]=false;
-        if (Math.random() < 0.3 + prog * 0.5) {
-          gapExtend=1+Math.floor(Math.random()*(1+Math.floor(prog*3)));
+        if (Math.random() < 0.15 + prog * 0.3) {
+          gapExtend=1+Math.floor(Math.random()*(1+Math.floor(prog*2)));
           gapExtendPattern=[...lanes];
         }
       } else if (r < dCut) {
@@ -145,8 +145,8 @@ function createSeg(z) {
         let b=Math.floor(Math.random()*3);
         while(b===a)b=Math.floor(Math.random()*3);
         lanes[a]=false; lanes[b]=false;
-        if (Math.random() < 0.3 + prog * 0.5) {
-          gapExtend=1+Math.floor(Math.random()*(1+Math.floor(prog*2)));
+        if (Math.random() < 0.1 + prog * 0.2) {
+          gapExtend=1+Math.floor(Math.random()*(1+Math.floor(prog*1.5)));
           gapExtendPattern=[...lanes];
         }
       }
@@ -234,7 +234,7 @@ function update() {
 
     if (!onGround && playerY > 0) {
       fallFrames++;
-      if (fallFrames > 5 || playerY > 80) die();
+      if (fallFrames > 10 || playerY > 120) die();
     }
 
     if (onPlat && playerY >= 0 && playerY < 20) {
@@ -358,8 +358,9 @@ function draw() {
     ctx.translate((Math.random()-0.5)*shakeX*2,(Math.random()-0.5)*shakeY*2);
 
   // Background
+  const lvb = state==='menu'||currentLevel<0 ? ['#0c0c28','#080820','#020210'] : levels[currentLevel].bg;
   const bg=ctx.createRadialGradient(W/2,H/2,50,W/2,H/2,500);
-  bg.addColorStop(0,'#0c0c28'); bg.addColorStop(0.4,'#080820'); bg.addColorStop(1,'#020210');
+  bg.addColorStop(0,lvb[0]); bg.addColorStop(0.4,lvb[1]); bg.addColorStop(1,lvb[2]);
   ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
 
   // Stars — 3D with camera tracking
@@ -431,25 +432,20 @@ function draw() {
 
 function drawTunnel() {
   ctx.save();
+  const lv = state==='playing'||state==='gameover'||state==='levelcomplete' ? levels[currentLevel] : null;
+  const th = lv ? lv.tunHue : 220;
   for (let i=0;i<28;i++) {
     const t = i/28;
-    const worldZ = pz + t * 5500;
+    const worldZ = state==='menu' ? 5000 + i * 300 : pz + t * 5500;
     const p = screenPos(0, 0, worldZ);
     if (!p) continue;
     const w = 380 * p.sc * 1.8, cx = W/2, cy = p.y;
     const a = (1-t*0.8) * 0.05;
 
-    ctx.strokeStyle = `rgba(60,130,255,${a})`;
+    ctx.strokeStyle = `hsla(${th+30},80%,60%,${a})`;
     ctx.lineWidth = 1.5;
     ctx.globalAlpha = a*2;
     ctx.beginPath(); ctx.ellipse(cx, cy, w, w*0.35, 0, 0, 6.28); ctx.stroke();
-
-    ctx.strokeStyle = `rgba(50,100,220,${a*0.4})`;
-    ctx.lineWidth = 0.5;
-    for (let j=0;j<6;j++) {
-      const ang=j/6*6.28, ex=cx+Math.cos(ang)*w, ey=cy+Math.sin(ang)*w*0.35;
-      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke();
-    }
   }
   if (coinPop>0) {
     ctx.save();
@@ -496,6 +492,7 @@ function drawSeg(seg) {
 
   const sqW = LANE_W * 0.88;
   const sqH = sqW * 0.35;
+  const lv = levels[currentLevel];
 
   for (let r = rows - 1; r >= 0; r--) {
     const rowZ = z + r * step;
@@ -516,6 +513,7 @@ function drawSeg(seg) {
 
       ctx.shadowColor = c.g; ctx.shadowBlur = 12*sc;
       const hue = parseInt(c.t.match(/\d+/)[0]) || 220;
+
       const grd = ctx.createLinearGradient(sx, baseY-h, sx, baseY);
       grd.addColorStop(0, `hsl(${hue+20},92%,68%)`);
       grd.addColorStop(0.3, c.t);
@@ -524,12 +522,82 @@ function drawSeg(seg) {
       ctx.fillRect(sx - w/2, baseY - h, w, h);
       ctx.shadowBlur = 0;
 
-      ctx.strokeStyle = `hsla(${hue+30},100%,80%,${0.25*sc})`;
-      ctx.lineWidth = Math.max(0.5, 1.2*sc);
-      ctx.strokeRect(sx - w/2, baseY - h, w, h);
+      if (lv.style==='glow') {
+        ctx.shadowColor = `hsla(${hue+30},100%,70%,0.5)`;
+        ctx.shadowBlur = 20*sc;
+        ctx.strokeStyle = `hsla(${hue+30},100%,80%,${0.5*sc})`;
+        ctx.lineWidth = Math.max(0.5, 2*sc);
+        ctx.strokeRect(sx - w/2, baseY - h, w, h);
+        ctx.shadowBlur = 0;
+      } else {
+        ctx.strokeStyle = `hsla(${hue+30},100%,80%,${0.25*sc})`;
+        ctx.lineWidth = Math.max(0.5, 1.2*sc);
+        ctx.strokeRect(sx - w/2, baseY - h, w, h);
+      }
 
       ctx.fillStyle = `hsla(${hue+30},100%,90%,${0.2*sc})`;
       ctx.fillRect(sx - w/2 + 3*sc, baseY - h + 2*sc, w - 6*sc, 2.5*sc);
+
+      // Style-specific decorations
+      if (lv.style==='grid') {
+        ctx.strokeStyle = `hsla(${hue+30},50%,80%,${0.1*sc})`;
+        ctx.lineWidth = Math.max(0.3, 0.5*sc);
+        ctx.beginPath();
+        ctx.moveTo(sx - w/2 + w*0.33, baseY - h);
+        ctx.lineTo(sx - w/2 + w*0.33, baseY);
+        ctx.moveTo(sx - w/2 + w*0.66, baseY - h);
+        ctx.lineTo(sx - w/2 + w*0.66, baseY);
+        ctx.moveTo(sx - w/2, baseY - h*0.5);
+        ctx.lineTo(sx + w/2, baseY - h*0.5);
+        ctx.stroke();
+      }
+      if (lv.style==='neon') {
+        ctx.shadowColor = `hsla(${hue+30},100%,60%,0.6)`;
+        ctx.shadowBlur = 15*sc;
+        ctx.fillStyle = `hsla(${hue+30},100%,90%,${0.15*sc})`;
+        ctx.fillRect(sx - w/2 + 2*sc, baseY - h + 2*sc, w - 4*sc, h - 4*sc);
+        ctx.shadowBlur = 0;
+      }
+      if (lv.style==='checker') {
+        ctx.fillStyle = `hsla(0,0%,0%,${0.08*sc})`;
+        const cs = w*0.25;
+        for (let ci=0;ci<4;ci++) {
+          for (let cj=0;cj<2;cj++) {
+            if ((ci+cj)%2===0) continue;
+            ctx.fillRect(sx - w/2 + ci*cs, baseY - h + cj*h*0.5, cs, h*0.5);
+          }
+        }
+      }
+      if (lv.style==='crystal') {
+        ctx.fillStyle = `hsla(0,0%,100%,${0.08*sc})`;
+        ctx.fillRect(sx - w/2 + 4*sc, baseY - h + 4*sc, w - 8*sc, h - 8*sc);
+        ctx.strokeStyle = `hsla(${hue+60},80%,90%,${0.3*sc})`;
+        ctx.lineWidth = Math.max(0.3, 0.5*sc);
+        ctx.beginPath();
+        ctx.moveTo(sx - w/2 + 2*sc, baseY - h + 2*sc);
+        ctx.lineTo(sx + w/2 - 2*sc, baseY - h + 2*sc);
+        ctx.stroke();
+      }
+      if (lv.style==='lava') {
+        ctx.strokeStyle = `hsla(${hue+40},100%,55%,${0.2*sc})`;
+        ctx.lineWidth = Math.max(0.3, 0.5*sc);
+        for (let li=0;li<3;li++) {
+          const lx2 = sx - w/2 + Math.random()*w;
+          const ly = baseY - Math.random()*h;
+          ctx.beginPath();
+          ctx.moveTo(lx2, ly);
+          ctx.lineTo(lx2 + Math.random()*6*sc - 3*sc, ly - Math.random()*4*sc);
+          ctx.stroke();
+        }
+      }
+      if (lv.style==='void') {
+        ctx.fillStyle = `hsla(0,0%,100%,${0.06*sc})`;
+        for (let si=0;si<2;si++) {
+          const sx2 = sx - w/2 + Math.random()*w;
+          const sy2 = baseY - Math.random()*h;
+          ctx.beginPath(); ctx.arc(sx2, sy2, Math.max(0.3, 0.5*sc), 0, 6.28); ctx.fill();
+        }
+      }
     }
   }
 }
