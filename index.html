@@ -57,7 +57,7 @@ const sfx = {
 // Camera follows the player dynamically — true 3D
 const LANES = 3, LANE_W = 80, SEG_Z = 120, VIEW_DIST = 5000;
 const FOCAL = 650, CAM_Y = -130, CAM_DIST = 350;
-const GRAV = 0.68, JUMP_INIT = -8, JUMP_ACC = -0.85, JUMP_MAX = -11.5;
+const GRAV = 0.68, JUMP_INIT = -10.5, JUMP_ACC = -0.85, JUMP_MAX = -12, MAX_BOOST_FRAMES = 6;
 
 const levels = [
   {name:'Tutorial', len:2500, spd:5,  max:8,  gr:0.02, gap:0.05, dbl:0.07, safe:18, hue:220, reward:5,  tunHue:220, bg:['#0a0a30','#050520','#010108'], style:'default'},
@@ -75,7 +75,7 @@ let speed, playerLane, playerY, playerVY, ptx, px, pz, onGround;
 let segments = [], nsz = 0, dist = 0, stTimer = 0;
 let deathTimer = 0, fadeA = 0, shakeX = 0, shakeY = 0;
 let menuT = 0, scorePop = 0, fallFrames = 0, gapExtend = 0, gapExtendPattern = null;
-let jumpHeld = false;
+let jumpHeld = false, jumpBoostFrames = 0;
 let trail = [], camZ = -CAM_DIST;
 let currentLevel = 0, lvComplete = 0, lvScore = 0;
 let unlockedLevel = parseInt(localStorage.getItem('run3d_unlocked'))||1;
@@ -217,7 +217,7 @@ function resetGame(lvl) {
   pz=0; px=0; ptx=0; playerLane=1; playerY=0; playerVY=0; onGround=true;
   score=0; lvScore=0; dist=0; speed=lv.spd; segments=[]; nsz=0; particles=[]; trail=[];
   deathTimer=0; fadeA=0; shakeX=0; shakeY=0; stTimer=0; scorePop=0; fallFrames=0; gapExtend=0;
-  jumpHeld=false;
+  jumpHeld=false; jumpBoostFrames=0;
   levelCoins=[]; lvComplete=0;
   camZ = -CAM_DIST;
   generateSegs();
@@ -233,7 +233,7 @@ function handleInput() {
   }
   if (state==='gameover' && deathTimer>25) { state='menu'; return; }
   if (state==='playing' && onGround) {
-    playerVY = JUMP_INIT; onGround = false; jumpHeld = true;
+    playerVY = JUMP_INIT; onGround = false; jumpHeld = true; jumpBoostFrames = 0;
     sfx.jump();
     emit(px,0,pz,10,['rgba(255,255,255,0.5)','rgba(100,200,255,0.3)'],3);
   }
@@ -264,7 +264,7 @@ function update() {
     px += (ptx - px) * 0.16;
 
     playerVY += GRAV;
-    if (jumpHeld && playerVY < 0) { playerVY += JUMP_ACC; if (playerVY < JUMP_MAX) playerVY = JUMP_MAX; }
+    if (jumpHeld && playerVY < 0 && jumpBoostFrames < MAX_BOOST_FRAMES) { playerVY += JUMP_ACC; jumpBoostFrames++; if (playerVY < JUMP_MAX) playerVY = JUMP_MAX; }
     playerY += playerVY;
 
     const curSeg = segAt(pz);
