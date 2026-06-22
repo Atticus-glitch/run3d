@@ -83,6 +83,36 @@ let completedLevels = {};
 try { completedLevels = JSON.parse(localStorage.getItem('run3d_completed'))||{}; } catch(e) {}
 let levelCoins = []; // coins scattered on current level
 
+let playerConfig = JSON.parse(localStorage.getItem('run3d_config')) || { height:1, hue:220, trail:'fire' };
+let purchased = new Set(JSON.parse(localStorage.getItem('run3d_purchased'))||[]);
+let shopCat = 0;
+
+  const shopData = [
+  { cat:'Height', items:[
+    { id:'h1', name:'90%', cost:20, fn:()=>{playerConfig.height=0.9;saveCfg()} },
+    { id:'h2', name:'80%', cost:50, fn:()=>{playerConfig.height=0.8;saveCfg()} },
+    { id:'h3', name:'70%', cost:100, fn:()=>{playerConfig.height=0.7;saveCfg()} },
+    { id:'h4', name:'60%', cost:200, fn:()=>{playerConfig.height=0.6;saveCfg()} },
+    { id:'h5', name:'50%', cost:500, fn:()=>{playerConfig.height=0.5;saveCfg()} },
+  ]},
+  { cat:'Colors', items:[
+    { id:'c1', name:'Blue', cost:0, fn:()=>{playerConfig.hue=220;delete playerConfig.sat;delete playerConfig.light;saveCfg()}, owned:true },
+    { id:'c2', name:'Red', cost:30, fn:()=>{playerConfig.hue=0;delete playerConfig.sat;delete playerConfig.light;saveCfg()} },
+    { id:'c3', name:'Green', cost:30, fn:()=>{playerConfig.hue=120;delete playerConfig.sat;delete playerConfig.light;saveCfg()} },
+    { id:'c4', name:'Gold', cost:50, fn:()=>{playerConfig.hue=50;delete playerConfig.sat;delete playerConfig.light;saveCfg()} },
+    { id:'c5', name:'Purple', cost:50, fn:()=>{playerConfig.hue=280;delete playerConfig.sat;delete playerConfig.light;saveCfg()} },
+    { id:'c6', name:'White', cost:100, fn:()=>{playerConfig.hue=0;playerConfig.sat=0;saveCfg()} },
+  ]},
+  { cat:'Trails', items:[
+    { id:'t1', name:'Fire', cost:0, fn:()=>{playerConfig.trail='fire';saveCfg()}, owned:true },
+    { id:'t2', name:'Ice', cost:40, fn:()=>{playerConfig.trail='ice';playerConfig.trailHue=200;saveCfg()} },
+    { id:'t3', name:'Neon', cost:60, fn:()=>{playerConfig.trail='neon';playerConfig.trailHue=140;saveCfg()} },
+    { id:'t4', name:'Gold', cost:80, fn:()=>{playerConfig.trail='gold';playerConfig.trailHue=50;saveCfg()} },
+  ]},
+];
+
+function saveCfg() { localStorage.setItem('run3d_config', JSON.stringify(playerConfig)); localStorage.setItem('run3d_purchased', JSON.stringify([...purchased])); }
+
 // Stars in world coords — we cycle them as camera moves
 let stars = [];
 function initStars() {
@@ -161,7 +191,8 @@ function createSeg(z) {
   const coins = [];
   for (let i=0;i<3;i++) {
     if (lanes[i] && Math.random()<0.18) {
-      coins.push({ lane:i, z:z+Math.random()*SEG_Z, collected:false });
+      const row = Math.floor(Math.random()*6);
+      coins.push({ lane:i, z:z + row * (SEG_Z/6) + SEG_Z/12, collected:false });
     }
   }
   return {z,lanes,cols,coins};
@@ -170,7 +201,7 @@ function createSeg(z) {
 function generateSegs() {
   while (nsz < pz + VIEW_DIST) { const seg=createSeg(nsz); segments.push(seg); for (const c of seg.coins) levelCoins.push(c); nsz += SEG_Z; }
   segments = segments.filter(s => s.z > pz - SEG_Z*5);
-  levelCoins = levelCoins.filter(c => c.z > pz - SEG_Z*2 && !c.collected);
+  levelCoins = levelCoins.filter(c => c.z > pz - SEG_Z*3 && !c.collected);
 }
 
 function lx(i) { return (i-1)*LANE_W; }
@@ -251,8 +282,9 @@ function update() {
 
     if (onGround && Math.random()<0.5+speed*0.02) {
       const fr=Math.random()*2+1;
+      const thue = playerConfig.trail==='ice'?200:playerConfig.trail==='neon'?140:playerConfig.trail==='gold'?50:20;
       trail.push({x:px+(Math.random()-0.5)*12,y:1+Math.random()*3,z:pz-10,life:1,r:fr,
-        h:20+Math.random()*30,s:80+Math.random()*20,l:50+Math.random()*30});
+        h:thue+Math.random()*30,s:80+Math.random()*20,l:50+Math.random()*30});
     }
     for (let i=trail.length-1;i>=0;i--) { trail[i].life-=0.04; if (trail[i].life<=0) trail.splice(i,1); }
 
@@ -384,7 +416,7 @@ function draw() {
   for (const s of vs) drawSeg(s);
 
   // Coins
-  for (const c of levelCoins) if (!c.collected && c.z > camZ && c.z < pz+200) drawCoin(c);
+  for (const c of levelCoins) if (!c.collected && c.z > camZ && c.z < pz+400) drawCoin(c);
 
   for (const p of particles) if (p.z<=pz+30) drawP(p);
 
@@ -426,6 +458,7 @@ function draw() {
   if (state==='levelcomplete') drawLevelComplete();
   drawUI();
   if (state==='menu') drawMenu();
+  if (state==='shop') drawShop();
 
   ctx.restore();
 }
@@ -604,7 +637,6 @@ function drawSeg(seg) {
 }
 
 function drawPlayer() {
-  // Player is always at pz, which is CAM_DIST ahead of camera
   const p = screenPos(px, 0, pz);
   if (!p) return;
   const groundY = p.y - 16*p.sc;
@@ -614,28 +646,34 @@ function drawPlayer() {
   ctx.translate(p.x, ppy);
   ctx.scale(p.sc, p.sc);
 
+  // Height scaling from shop (keep feet planted)
+  const hs = playerConfig.height;
+  if (hs !== 1) { ctx.translate(0, 36*(1-hs)); ctx.scale(1, hs); }
+
   const bob = onGround ? Math.sin(dist*0.018)*2 : 0;
-  const hue = 220;
+  const hue = playerConfig.hue;
+  const usat = playerConfig.sat!==undefined ? playerConfig.sat : 55;
+  const ulight = playerConfig.light!==undefined ? playerConfig.light : 35;
 
   // Legs
-  ctx.fillStyle=`hsl(${hue},55%,35%)`;
+  ctx.fillStyle=`hsl(${hue},${usat}%,${ulight}%)`;
   const ll = 17+bob;
   ctx.fillRect(-7,18,6,ll);
   ctx.fillRect(1,18,6,ll);
 
   // Boots
-  ctx.fillStyle=`hsl(${hue},45%,25%)`;
+  ctx.fillStyle=`hsl(${hue},${Math.max(0,usat-10)}%,${Math.max(5,ulight-10)}%)`;
   ctx.fillRect(-8,18+ll-3,8,4);
   ctx.fillRect(0,18+ll-3,8,4);
 
   // Body — extended to connect seamlessly with legs
   ctx.shadowColor='rgba(100,180,255,0.35)'; ctx.shadowBlur=18;
-  ctx.fillStyle=`hsl(${hue+10},70%,52%)`;
+  ctx.fillStyle=`hsl(${hue+10},${Math.min(100,usat+15)}%,${Math.min(90,ulight+17)}%)`;
   ctx.beginPath(); ctx.roundRect(-9,-22,18,42,5); ctx.fill();
 
   // Belt / waist
   ctx.shadowBlur=0;
-  ctx.fillStyle=`hsl(${hue},50%,30%)`;
+  ctx.fillStyle=`hsl(${hue},${Math.max(0,usat-5)}%,${Math.max(5,ulight-5)}%)`;
   ctx.fillRect(-9,14,18,5);
 
   // Chest core
@@ -646,21 +684,21 @@ function drawPlayer() {
 
   // Arms
   const as=onGround?Math.sin(dist*0.018)*4:0;
-  ctx.fillStyle=`hsl(${hue+5},55%,40%)`;
+  ctx.fillStyle=`hsl(${hue+5},${usat}%,${ulight+5}%)`;
   ctx.save(); ctx.translate(-9,-16); ctx.rotate(-0.25+as*0.02); ctx.fillRect(-3,0,5,15); ctx.restore();
   ctx.save(); ctx.translate(9,-16); ctx.rotate(0.25-as*0.02); ctx.fillRect(-2,0,5,15); ctx.restore();
 
   // Gloves
-  ctx.fillStyle=`hsl(${hue+5},45%,30%)`;
+  ctx.fillStyle=`hsl(${hue+5},${Math.max(0,usat-10)}%,${Math.max(5,ulight-5)}%)`;
   ctx.save(); ctx.translate(-9,-16); ctx.rotate(-0.25+as*0.02); ctx.fillRect(-3,13,5,3); ctx.restore();
   ctx.save(); ctx.translate(9,-16); ctx.rotate(0.25-as*0.02); ctx.fillRect(-2,13,5,3); ctx.restore();
 
   // Helmet
   ctx.shadowColor='rgba(130,190,255,0.4)'; ctx.shadowBlur=22;
   const hgrd=ctx.createRadialGradient(-2,-28,1,0,-24,13);
-  hgrd.addColorStop(0,`hsl(${hue+25},90%,72%)`);
-  hgrd.addColorStop(0.6,`hsl(${hue+15},80%,58%)`);
-  hgrd.addColorStop(1,`hsl(${hue+5},70%,42%)`);
+  hgrd.addColorStop(0,`hsl(${hue+25},${Math.min(100,usat+35)}%,${Math.min(95,ulight+37)}%)`);
+  hgrd.addColorStop(0.6,`hsl(${hue+15},${Math.min(100,usat+25)}%,${Math.min(90,ulight+23)}%)`);
+  hgrd.addColorStop(1,`hsl(${hue+5},${Math.min(100,usat+15)}%,${Math.min(80,ulight+7)}%)`);
   ctx.fillStyle=hgrd;
   ctx.beginPath(); ctx.arc(0,-26,13,0,6.28); ctx.fill();
   ctx.shadowBlur=0;
@@ -672,21 +710,22 @@ function drawPlayer() {
   ctx.beginPath(); ctx.roundRect(-6,-30,12,3,2); ctx.fill();
 
   // Backpack
-  ctx.fillStyle=`hsl(${hue+10},50%,35%)`;
+  ctx.fillStyle=`hsl(${hue+10},${usat}%,${Math.max(5,ulight)}%)`;
   ctx.fillRect(-11,-17,3,18); ctx.fillRect(8,-17,3,18);
 
   // Fire exhaust below boots
   if (state==='playing') {
     const fi = onGround ? Math.max(0,(speed-5)/30) : 1;
     if (fi>0.05) {
-      ctx.shadowColor='rgba(255,120,30,0.6)';
+      const eh = playerConfig.trail==='ice'?200:playerConfig.trail==='neon'?140:playerConfig.trail==='gold'?50:20;
+      ctx.shadowColor=playerConfig.trail==='ice'?'rgba(100,200,255,0.6)':playerConfig.trail==='neon'?'rgba(100,255,100,0.6)':playerConfig.trail==='gold'?'rgba(255,200,50,0.6)':'rgba(255,120,30,0.6)';
       for (let f=0;f<12;f++) {
         const fx=-7+f*1.3+Math.random()*2;
         const fh=(2+Math.random()*16)*fi;
         const fw=1+Math.random()*3;
         ctx.shadowBlur=12+Math.random()*18;
         ctx.globalAlpha=0.2+Math.random()*0.5;
-        ctx.fillStyle=`hsl(${15+Math.random()*35},100%,${50+Math.random()*35}%)`;
+        ctx.fillStyle=`hsl(${eh+Math.random()*30},100%,${50+Math.random()*35}%)`;
         ctx.fillRect(fx,37+bob,fw,fh);
       }
       ctx.shadowBlur=0;
@@ -720,7 +759,7 @@ function drawP(p) {
 }
 
 function drawUI() {
-  if (state==='menu'||state==='levelcomplete') return;
+  if (state==='menu'||state==='levelcomplete'||state==='shop') return;
   ctx.save();
 
   ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=15;
@@ -865,7 +904,7 @@ function drawMenu() {
   ctx.fillStyle='rgba(255,255,255,0.3)';
   ctx.font='10px "Segoe UI",system-ui,sans-serif';
   ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText('Click a level or press 1-8 to start', W/2, H-25);
+  ctx.fillText('Click a level or press 1-8  |  SHOP (S)', W/2, H-25);
   ctx.globalAlpha=1;
 
   ctx.restore();
@@ -1012,6 +1051,120 @@ function drawLevelComplete() {
   ctx.restore();
 }
 
+function drawShop() {
+  ctx.save();
+  ctx.fillStyle='rgba(0,0,0,0.85)';
+  ctx.fillRect(0,0,W,H);
+
+  ctx.shadowColor='rgba(255,215,0,0.3)'; ctx.shadowBlur=30;
+  ctx.fillStyle='#ffd700';
+  ctx.font='bold 20px "Segoe UI",system-ui,sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('SHOP', W/2, 30);
+  ctx.shadowBlur=0;
+
+  ctx.fillStyle='rgba(255,215,0,0.4)';
+  ctx.font='10px "Segoe UI",system-ui,sans-serif';
+  ctx.textAlign='right'; ctx.textBaseline='top';
+  ctx.fillText('\u25CB '+coins, W-10, 10);
+
+  // Category tabs
+  const tabW=120, tabH=28, tabY=55;
+  for (let i=0;i<shopData.length;i++) {
+    const tx=(i+0.5)*(W/shopData.length)-tabW/2;
+    const active=i===shopCat;
+    ctx.fillStyle=active?'rgba(255,215,0,0.2)':'rgba(255,255,255,0.05)';
+    ctx.beginPath(); ctx.roundRect(tx,tabY,tabW,tabH,6); ctx.fill();
+    ctx.fillStyle=active?'#ffd700':'rgba(255,255,255,0.4)';
+    ctx.font=active?'bold 11px "Segoe UI",system-ui,sans-serif':'11px "Segoe UI",system-ui,sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(shopData[i].cat, tx+tabW/2, tabY+tabH/2);
+  }
+
+  // Items
+  const cat = shopData[shopCat];
+  const startY=100, itemH=36;
+  for (let i=0;i<cat.items.length;i++) {
+    const item=cat.items[i];
+    const by=startY+i*itemH;
+    const owned=purchased.has(item.id)||item.owned;
+    let isActive = false;
+    if (shopCat===0) {
+      const pct = parseFloat(item.name.replace('%',''))/100;
+      isActive = Math.abs(pct - playerConfig.height) < 0.01;
+    } else if (shopCat===1) {
+      const hm = {Blue:220, Red:0, Green:120, Gold:50, Purple:280};
+      isActive = item.name==='White' ? (playerConfig.sat===0) : (playerConfig.hue===hm[item.name] && playerConfig.sat===undefined);
+    } else if (shopCat===2) {
+      isActive = playerConfig.trail === item.name.toLowerCase();
+    }
+    else if (shopCat===1) isActive = playerConfig.hue === parseInt(item.fn.toString().match(/hue=(\d+)/)?.[1]||'-1');
+    else if (shopCat===2) isActive = playerConfig.trail === item.fn.toString().match(/trail='(\w+)'/)?.[1];
+
+    ctx.fillStyle=isActive?'rgba(255,215,0,0.12)':'rgba(255,255,255,0.03)';
+    ctx.beginPath(); ctx.roundRect(50,by,W-100,itemH-4,6); ctx.fill();
+
+    ctx.fillStyle=owned?(isActive?'#ffd700':'rgba(255,255,255,0.6)'):'rgba(255,255,255,0.3)';
+    ctx.font='12px "Segoe UI",system-ui,sans-serif';
+    ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText(item.name, 60, by+itemH/2-2);
+
+    if (isActive) {
+      ctx.fillStyle='#66ff99';
+      ctx.font='9px "Segoe UI",system-ui,sans-serif';
+      ctx.textAlign='right'; ctx.textBaseline='middle';
+      ctx.fillText('EQUIPPED', W-60, by+itemH/2-2);
+    } else if (owned) {
+      ctx.fillStyle='rgba(255,255,255,0.3)';
+      ctx.font='9px "Segoe UI",system-ui,sans-serif';
+      ctx.textAlign='right'; ctx.textBaseline='middle';
+      ctx.fillText('OWNED', W-60, by+itemH/2-2);
+    } else {
+      ctx.fillStyle='rgba(255,215,0,0.5)';
+      ctx.font='9px "Segoe UI",system-ui,sans-serif';
+      ctx.textAlign='right'; ctx.textBaseline='middle';
+      ctx.fillText('\u25CB '+item.cost, W-60, by+itemH/2-2);
+    }
+  }
+
+  ctx.fillStyle='rgba(255,255,255,0.15)';
+  ctx.font='9px "Segoe UI",system-ui,sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='bottom';
+  ctx.fillText('Click an item to buy/equip  |  S/ESC to return', W/2, H-8);
+  ctx.restore();
+}
+
+function handleShopClick(sx,sy) {
+  // Category tabs
+  const tabW=120, tabH=28, tabY=55;
+  for (let i=0;i<shopData.length;i++) {
+    const tx=(i+0.5)*(W/shopData.length)-tabW/2;
+    if (sx>=tx&&sx<=tx+tabW&&sy>=tabY&&sy<=tabY+tabH) { shopCat=i; return; }
+  }
+
+  // Items
+  const cat = shopData[shopCat];
+  const startY=100, itemH=36;
+  for (let i=0;i<cat.items.length;i++) {
+    const item=cat.items[i];
+    const by=startY+i*itemH;
+    if (sx>=50&&sx<=W-50&&sy>=by&&sy<=by+itemH-4) {
+      const owned=purchased.has(item.id)||item.owned;
+      if (owned) {
+        item.fn();
+      } else if (coins>=item.cost) {
+        coins-=item.cost;
+        localStorage.setItem('run3d_coins', coins);
+        purchased.add(item.id);
+        item.fn();
+        saveCfg();
+        sfx.score();
+      }
+      return;
+    }
+  }
+}
+
 if (!CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r) {
     if (r>w/2) r=w/2; if (r>h/2) r=h/2;
@@ -1034,6 +1187,8 @@ document.addEventListener('keydown',e=>{
   if (e.code==='Space'||e.code==='ArrowUp'||e.key==='w'){e.preventDefault();handleInput();}
   if (e.code==='ArrowLeft'||e.key==='a'){e.preventDefault();moveLane(-1);}
   if (e.code==='ArrowRight'||e.key==='d'){e.preventDefault();moveLane(1);}
+  if (state==='menu' && (e.key==='s'||e.key==='S')) { state='shop'; e.preventDefault(); return; }
+  if (state==='shop' && (e.key==='s'||e.key==='S'||e.code==='Escape')) { state='menu'; e.preventDefault(); return; }
   if (state==='menu') {
     const n=parseInt(e.key);
     if (n>=1&&n<=levels.length&&n<=unlockedLevel) {
@@ -1059,7 +1214,11 @@ canvas.addEventListener('click',e=>{
         currentLevel=i; resetGame(i); state='playing'; sfx.woosh(); return;
       }
     }
+    if (sy>=H-45&&sy<=H-10) { state='shop'; return; }
     return;
+  }
+  if (state==='shop') {
+    handleShopClick(sx,sy); return;
   }
   if (state==='gameover'&&deathTimer>25) {
     const gpy=(H-300)/2;
@@ -1090,7 +1249,11 @@ canvas.addEventListener('touchstart',e=>{
         currentLevel=i; resetGame(i); state='playing'; sfx.woosh(); return;
       }
     }
+    if (sy>=H-45&&sy<=H-10) { state='shop'; return; }
     return;
+  }
+  if (state==='shop') {
+    handleShopClick(sx,sy); return;
   }
   if (state==='gameover'&&deathTimer>25) {
     const gpy=(H-300)/2;
