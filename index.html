@@ -666,12 +666,6 @@ function drawPlayer() {
   const usat = playerConfig.sat!==undefined ? playerConfig.sat : 55;
   const ulight = playerConfig.light!==undefined ? playerConfig.light : 35;
 
-  // Drop shadow on ground
-  ctx.shadowColor='rgba(0,0,0,0.3)'; ctx.shadowBlur=14;
-  ctx.fillStyle='rgba(0,0,0,0.15)';
-  ctx.beginPath(); ctx.ellipse(0, 38+bob, 12, 3, 0, 0, 6.28); ctx.fill();
-  ctx.shadowBlur=0;
-
   // Legs
   ctx.fillStyle=`hsl(${hue},${usat}%,${ulight}%)`;
   const ll = 17+bob;
