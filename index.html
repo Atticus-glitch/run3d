@@ -76,7 +76,7 @@ let segments = [], nsz = 0, dist = 0, stTimer = 0;
 let deathTimer = 0, fadeA = 0, shakeX = 0, shakeY = 0;
 let menuT = 0, scorePop = 0, fallFrames = 0, gapExtend = 0, gapExtendPattern = null;
 let jumpHeld = false, jumpBoostFrames = 0;
-let trail = [], camZ = -CAM_DIST;
+let camZ = -CAM_DIST;
 let currentLevel = 0, lvComplete = 0, lvScore = 0;
 let unlockedLevel = parseInt(localStorage.getItem('run3d_unlocked'))||1;
 let levelBest = [];
@@ -215,7 +215,7 @@ function resetGame(lvl) {
   currentLevel = lvl;
   const lv = levels[lvl];
   pz=0; px=0; ptx=0; playerLane=1; playerY=0; playerVY=0; onGround=true;
-  score=0; lvScore=0; dist=0; speed=lv.spd; segments=[]; nsz=0; particles=[]; trail=[];
+  score=0; lvScore=0; dist=0; speed=lv.spd; segments=[]; nsz=0; particles=[];
   deathTimer=0; fadeA=0; shakeX=0; shakeY=0; stTimer=0; scorePop=0; fallFrames=0; gapExtend=0;
   jumpHeld=false; jumpBoostFrames=0;
   levelCoins=[]; lvComplete=0;
@@ -286,14 +286,6 @@ function update() {
     }
 
     if (onGround && speed>5) { stTimer+=speed; if (stTimer>40) { stTimer=0; sfx.step(); } }
-
-    if (onGround && Math.random()<0.5+speed*0.02) {
-      const fr=Math.random()*2+1;
-      const thue = playerConfig.trail==='ice'?200:playerConfig.trail==='neon'?140:playerConfig.trail==='gold'?50:20;
-      trail.push({x:px+(Math.random()-0.5)*12,y:1+Math.random()*3,z:pz-10,life:1,r:fr,
-        h:thue+Math.random()*30,s:80+Math.random()*20,l:50+Math.random()*30});
-    }
-    for (let i=trail.length-1;i>=0;i--) { trail[i].life-=0.04; if (trail[i].life<=0) trail.splice(i,1); }
 
     // Coin collection
     for (const c of levelCoins) {
@@ -417,7 +409,6 @@ function draw() {
 
   // Tunnel
   drawTunnel();
-  for (const t of trail) drawTrail(t);
 
   // Segments sorted far→near (painter's algorithm)
   const vs = segments.filter(s => s.z + SEG_Z > camZ && s.z < pz + VIEW_DIST).sort((a,b)=>b.z-a.z);
@@ -730,17 +721,6 @@ function drawPlayer() {
   ctx.restore();
 }
 
-function drawTrail(t) {
-  const p = screenPos(t.x, t.y, t.z);
-  if (!p) return;
-  ctx.globalAlpha = t.life*0.4;
-  ctx.fillStyle=`hsla(${t.h||200},${t.s||80}%,${t.l||60}%,0.5)`;
-  ctx.shadowColor=`hsla(${t.h||200},100%,60%,0.3)`;
-  ctx.shadowBlur=10;
-  ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0.5,t.r*p.sc), 0, 6.28); ctx.fill();
-  ctx.shadowBlur=0;
-  ctx.globalAlpha=1;
-}
 
 function drawP(p) {
   const sp = screenPos(p.x, p.y, p.z);
