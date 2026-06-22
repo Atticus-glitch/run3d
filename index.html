@@ -15,6 +15,7 @@ canvas { display:block; max-width:100vw; max-height:100vh; cursor:pointer; }
 <script>
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = true;
 const W = 480, H = 720;
 let SCALE = 1;
 
@@ -430,19 +431,19 @@ function draw() {
   // Tutorial prompts
   if (state==='playing' && currentLevel===0) {
     let tip = '', tipY = 110;
-    if (dist < 150) {
+    if (dist < 300) {
       tip = 'Use \u2190 \u2192 or A/D to switch lanes';
-    } else if (dist < 400) {
+    } else if (dist < 750) {
       tip = 'Try moving to each lane \u2014 stay on the path!';
-    } else if (dist < 700) {
+    } else if (dist < 1300) {
       tip = 'Press \u2191 or SPACE to jump';
-    } else if (dist < 1000) {
+    } else if (dist < 1900) {
       tip = 'Good! Jump over the gaps coming up!';
-    } else if (dist < 1400) {
+    } else if (dist < 2600) {
       tip = 'Watch for missing platforms \u2014 jump or switch!';
-    } else if (dist < 1800) {
+    } else if (dist < 3400) {
       tip = 'You\u2019re doing great! Keep going!';
-    } else if (dist < 2300) {
+    } else if (dist < 4300) {
       tip = 'Almost through the tutorial!';
     }
     if (tip) {
@@ -559,6 +560,10 @@ function drawSeg(seg) {
       ctx.fillRect(sx - w/2, baseY - h, w, h);
       ctx.shadowBlur = 0;
 
+      // Top edge highlight for depth
+      ctx.fillStyle = `hsla(${hue+30},100%,90%,${0.15*sc})`;
+      ctx.fillRect(sx - w/2 + 2*sc, baseY - h, w - 4*sc, Math.max(0.5, 1.5*sc));
+
       if (lv.style==='glow') {
         ctx.shadowColor = `hsla(${hue+30},100%,70%,0.5)`;
         ctx.shadowBlur = 20*sc;
@@ -658,16 +663,22 @@ function drawPlayer() {
   const usat = playerConfig.sat!==undefined ? playerConfig.sat : 55;
   const ulight = playerConfig.light!==undefined ? playerConfig.light : 35;
 
+  // Drop shadow on ground
+  ctx.shadowColor='rgba(0,0,0,0.3)'; ctx.shadowBlur=14;
+  ctx.fillStyle='rgba(0,0,0,0.15)';
+  ctx.beginPath(); ctx.ellipse(0, 38+bob, 12, 3, 0, 0, 6.28); ctx.fill();
+  ctx.shadowBlur=0;
+
   // Legs
   ctx.fillStyle=`hsl(${hue},${usat}%,${ulight}%)`;
   const ll = 17+bob;
-  ctx.fillRect(-7,18,6,ll);
-  ctx.fillRect(1,18,6,ll);
+  ctx.beginPath(); ctx.roundRect(-7,18,6,ll,2); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(1,18,6,ll,2); ctx.fill();
 
   // Boots
   ctx.fillStyle=`hsl(${hue},${Math.max(0,usat-10)}%,${Math.max(5,ulight-10)}%)`;
-  ctx.fillRect(-8,18+ll-3,8,4);
-  ctx.fillRect(0,18+ll-3,8,4);
+  ctx.beginPath(); ctx.roundRect(-8,18+ll-3,8,4,1.5); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(0,18+ll-3,8,4,1.5); ctx.fill();
 
   // Body — extended to connect seamlessly with legs
   ctx.shadowColor='rgba(100,180,255,0.35)'; ctx.shadowBlur=18;
@@ -677,7 +688,7 @@ function drawPlayer() {
   // Belt / waist
   ctx.shadowBlur=0;
   ctx.fillStyle=`hsl(${hue},${Math.max(0,usat-5)}%,${Math.max(5,ulight-5)}%)`;
-  ctx.fillRect(-9,14,18,5);
+  ctx.beginPath(); ctx.roundRect(-9,14,18,5,2); ctx.fill();
 
   // Chest core
   ctx.fillStyle=`hsl(${hue+60},100%,65%)`;
@@ -688,13 +699,13 @@ function drawPlayer() {
   // Arms
   const as=onGround?Math.sin(dist*0.018)*4:0;
   ctx.fillStyle=`hsl(${hue+5},${usat}%,${ulight+5}%)`;
-  ctx.save(); ctx.translate(-9,-16); ctx.rotate(-0.25+as*0.02); ctx.fillRect(-3,0,5,15); ctx.restore();
-  ctx.save(); ctx.translate(9,-16); ctx.rotate(0.25-as*0.02); ctx.fillRect(-2,0,5,15); ctx.restore();
+  ctx.save(); ctx.translate(-9,-16); ctx.rotate(-0.25+as*0.02); ctx.beginPath(); ctx.roundRect(-3,0,5,15,2); ctx.fill(); ctx.restore();
+  ctx.save(); ctx.translate(9,-16); ctx.rotate(0.25-as*0.02); ctx.beginPath(); ctx.roundRect(-2,0,5,15,2); ctx.fill(); ctx.restore();
 
   // Gloves
   ctx.fillStyle=`hsl(${hue+5},${Math.max(0,usat-10)}%,${Math.max(5,ulight-5)}%)`;
-  ctx.save(); ctx.translate(-9,-16); ctx.rotate(-0.25+as*0.02); ctx.fillRect(-3,13,5,3); ctx.restore();
-  ctx.save(); ctx.translate(9,-16); ctx.rotate(0.25-as*0.02); ctx.fillRect(-2,13,5,3); ctx.restore();
+  ctx.save(); ctx.translate(-9,-16); ctx.rotate(-0.25+as*0.02); ctx.beginPath(); ctx.roundRect(-3,13,5,3,1.5); ctx.fill(); ctx.restore();
+  ctx.save(); ctx.translate(9,-16); ctx.rotate(0.25-as*0.02); ctx.beginPath(); ctx.roundRect(-2,13,5,3,1.5); ctx.fill(); ctx.restore();
 
   // Helmet
   ctx.shadowColor='rgba(130,190,255,0.4)'; ctx.shadowBlur=22;
@@ -709,12 +720,15 @@ function drawPlayer() {
   // Visor
   ctx.fillStyle=`hsla(${hue+60},100%,72%,0.75)`;
   ctx.beginPath(); ctx.roundRect(-8,-31,16,7,3); ctx.fill();
-  ctx.fillStyle=`hsla(${hue+60},100%,85%,0.25)`;
+  ctx.fillStyle=`hsla(${hue+60},100%,85%,0.35)`;
   ctx.beginPath(); ctx.roundRect(-6,-30,12,3,2); ctx.fill();
+  ctx.fillStyle=`hsla(0,0%,100%,0.15)`;
+  ctx.beginPath(); ctx.roundRect(-5,-29,5,1.5,1); ctx.fill();
 
   // Backpack
   ctx.fillStyle=`hsl(${hue+10},${usat}%,${Math.max(5,ulight)}%)`;
-  ctx.fillRect(-11,-17,3,18); ctx.fillRect(8,-17,3,18);
+  ctx.beginPath(); ctx.roundRect(-11,-17,3,18,1.5); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(8,-17,3,18,1.5); ctx.fill();
 
   // Fire exhaust below boots
   if (state==='playing') {
@@ -765,31 +779,35 @@ function drawUI() {
   if (state==='menu'||state==='levelcomplete'||state==='shop') return;
   ctx.save();
 
-  ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=15;
+  ctx.shadowColor='rgba(0,0,0,0.6)'; ctx.shadowBlur=20;
   ctx.fillStyle='#fff';
   ctx.font='bold 36px "Segoe UI",system-ui,sans-serif';
   ctx.textAlign='center'; ctx.textBaseline='top';
   ctx.fillText(score, W/2, 18);
   ctx.shadowBlur=0;
 
-  ctx.fillStyle='rgba(255,255,255,0.3)';
+  ctx.fillStyle='rgba(255,255,255,0.25)';
   ctx.font='10px "Segoe UI",system-ui,sans-serif';
   ctx.textAlign='center'; ctx.textBaseline='top';
   ctx.fillText('SCORE', W/2, 58);
 
   if (state==='playing') {
     const lv=levels[currentLevel];
-    ctx.fillStyle='rgba(255,255,255,0.12)';
+    ctx.fillStyle='rgba(0,0,0,0.3)';
+    ctx.beginPath(); ctx.roundRect(6,6,100,18,4); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.2)';
     ctx.font='9px "Segoe UI",system-ui,sans-serif';
     ctx.textAlign='left'; ctx.textBaseline='top';
-    ctx.fillText(lv.name, 12, 12);
+    ctx.fillText(lv.name, 14, 10);
 
-    ctx.fillStyle='rgba(255,215,0,0.4)';
+    ctx.fillStyle='rgba(0,0,0,0.3)';
+    ctx.beginPath(); ctx.roundRect(116,6,34,18,4); ctx.fill();
+    ctx.fillStyle='rgba(255,215,0,0.5)';
     ctx.font='9px "Segoe UI",system-ui,sans-serif';
-    ctx.textAlign='right'; ctx.textBaseline='top';
-    ctx.fillText('\u25CB '+coins, 130, 12);
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    ctx.fillText('\u25CB '+coins, 133, 10);
 
-    ctx.fillStyle='rgba(255,255,255,0.1)';
+    ctx.fillStyle='rgba(255,255,255,0.2)';
     ctx.font='9px "Segoe UI",system-ui,sans-serif';
     ctx.textAlign='right'; ctx.textBaseline='top';
     ctx.fillText(Math.round(speed)+' SPD', W-12, 12);
@@ -797,9 +815,11 @@ function drawUI() {
     const pct=Math.min(1,dist/lv.len);
     const bx=50, by=78, bw=W-100, bh=4;
     ctx.fillStyle='rgba(255,255,255,0.06)';
-    ctx.fillRect(bx,by,bw,bh);
+    ctx.beginPath(); ctx.roundRect(bx,by,bw,bh,bh/2); ctx.fill();
     ctx.fillStyle=`hsla(${lv.hue+40},80%,55%,0.4)`;
-    ctx.fillRect(bx,by,bw*pct,bh);
+    if (pct > 0) {
+      ctx.beginPath(); ctx.roundRect(bx,by,Math.max(bh, bw*pct),bh,bh/2); ctx.fill();
+    }
 
     ctx.fillStyle='rgba(255,255,255,0.08)';
     ctx.font='7px "Segoe UI",system-ui,sans-serif';
@@ -816,6 +836,11 @@ function drawUI() {
       ctx.shadowColor=active?'rgba(100,200,255,0.5)':'transparent';
       ctx.shadowBlur=active?10:0;
       ctx.beginPath(); ctx.arc(dx,dy,active?5:3,0,6.28); ctx.fill();
+      if (active) {
+        ctx.shadowBlur=0;
+        ctx.fillStyle='rgba(255,255,255,0.3)';
+        ctx.beginPath(); ctx.arc(dx-1.5,dy-1.5,2,0,6.28); ctx.fill();
+      }
     }
     ctx.shadowBlur=0;
     ctx.fillStyle='rgba(255,255,255,0.08)';
